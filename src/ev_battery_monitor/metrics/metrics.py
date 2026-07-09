@@ -54,7 +54,9 @@ class Metrics:
     def render(self) -> str:
         """Render metrics in the specified text format."""
         snapshot = self.snapshot()
-        state = snapshot.last_state or SimulationState(0.0, 0.0, 0.0, 0.0, False, SimulationStatus.CHARGING)
+        state = snapshot.last_state or SimulationState(
+            0.0, 0.0, 0.0, 0.0, False, SimulationStatus.CHARGING
+        )
         return (
             "Technical Metrics\n"
             "-----------------\n"

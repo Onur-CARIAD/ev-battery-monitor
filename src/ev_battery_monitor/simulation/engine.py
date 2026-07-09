@@ -63,7 +63,9 @@ class SimulationEngine:
             speed_factor = self.config.get("runtime.speed_factor")
             simulated_hours = (tick_seconds * speed_factor) / 3600.0
             self.battery.add_energy(power * simulated_hours)
-            self.battery.soc_percent = min(self.battery.soc_percent, self.session.target_soc_percent)
+            self.battery.soc_percent = min(
+                self.battery.soc_percent, self.session.target_soc_percent
+            )
             self.battery.heat(power * self.config.get("runtime.heating_factor"))
             self.tick_count += 1
             status = SimulationStatus.COOLING if self.cooling else SimulationStatus.CHARGING
