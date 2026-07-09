@@ -14,6 +14,8 @@ COPY README.md ./
 
 RUN pip install --no-cache-dir .
 
+RUN mkdir -p /app/logs && chown -R app:app /app
+
 USER app
 
 CMD ["python", "-m", "ev_battery_monitor.main"]

@@ -77,3 +77,12 @@ runtime:
     default: 3.0
     unit: "°C"
     description: Cooling deactivation hysteresis
+logging:
+  enabled:
+    default: true
+    unit: ""
+    description: Write a per-run simulation log file
+  directory:
+    default: logs
+    unit: ""
+    description: Directory for per-run simulation log files
