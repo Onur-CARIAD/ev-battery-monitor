@@ -67,6 +67,8 @@ class SimulationEngine:
                 self.battery.soc_percent, self.session.target_soc_percent
             )
             self.battery.heat(power * self.config.get("runtime.heating_factor"))
+            if self.cooling:
+                self.battery.cool(self.config.get("runtime.cooling_factor"))
             self.tick_count += 1
             status = SimulationStatus.COOLING if self.cooling else SimulationStatus.CHARGING
             if self.battery.soc_percent >= self.session.target_soc_percent:

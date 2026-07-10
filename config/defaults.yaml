@@ -69,6 +69,10 @@ runtime:
     default: 0.0008
     unit: "°C/kW/Tick"
     description: Temperature increase per kW per tick
+  cooling_factor:
+    default: 0.15
+    unit: "°C/Tick"
+    description: Temperature removed per tick while cooling is active
   output_soc_step_percent:
     default: 1.0
     unit: "%"
