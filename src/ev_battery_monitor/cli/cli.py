@@ -9,6 +9,7 @@ from time import monotonic, sleep
 from ev_battery_monitor.config.config import Config
 from ev_battery_monitor.exceptions import ConfigError, SimulationError
 from ev_battery_monitor.metrics.metrics import Metrics
+from ev_battery_monitor.session_logging.session_logger import SessionLogger
 from ev_battery_monitor.simulation.engine import SimulationEngine
 from ev_battery_monitor.simulation.state import SimulationState, SimulationStatus
 
@@ -84,12 +85,14 @@ class CLI:
 
     def start_simulation(self) -> None:
         """Start and run the charging simulation."""
+        session_logger = SessionLogger(self.config)
         try:
             self.config.validate_for_start()
             engine = SimulationEngine.from_config(self.config)
             self.stop_event.clear()
             self.metrics.set_running(True)
             self._running_simulation = True
+            session_logger.start()
             print("Simulation started. Type 'stop' to abort.")
             self._install_sigint_handler()
             start = monotonic()
@@ -99,6 +102,7 @@ class CLI:
                 state = engine.tick()
                 duration_ms = (monotonic() - tick_start) * 1000.0
                 self.metrics.record_tick(state, duration_ms)
+                session_logger.log_tick(state)
                 if state.soc_percent - last_output_soc >= self.config.get(
                     "runtime.output_soc_step_percent"
                 ) or state.status in {SimulationStatus.COMPLETED, SimulationStatus.ERROR}:
@@ -118,6 +122,8 @@ class CLI:
         finally:
             self.metrics.set_running(False)
             self._running_simulation = False
+            session_logger.log_metrics(self.metrics)
+            session_logger.close()
             signal.signal(signal.SIGINT, signal.default_int_handler)
 
     @staticmethod

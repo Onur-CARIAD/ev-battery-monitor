@@ -20,6 +20,9 @@ jobs:
       - name: Save image
         run: docker save ev-battery-monitor:latest -o artifacts/ev-battery-monitor.tar
 
+      - name: Bundle compose file and instructions
+        run: cp packaging/docker-compose.yml packaging/README.md artifacts/
+
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
