@@ -36,3 +36,17 @@ def test_session_logger_disabled_writes_nothing(config, tmp_path):
 
     assert logger.log_path is None
     assert list(tmp_path.iterdir()) == []
+
+
+def test_session_logger_degrades_gracefully_on_os_error(config, tmp_path, capsys):
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory", encoding="utf-8")
+    config._current["logging.directory"] = str(blocker)
+    logger = SessionLogger(config)
+
+    logger.start()
+    logger.log_tick(SimulationState(21.0, 26.0, 135.0, 400.0, False, SimulationStatus.CHARGING, 1))
+    logger.close()
+
+    assert logger.log_path is None
+    assert "logging disabled" in capsys.readouterr().out
