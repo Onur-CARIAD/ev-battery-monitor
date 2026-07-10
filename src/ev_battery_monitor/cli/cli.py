@@ -14,6 +14,22 @@ from ev_battery_monitor.simulation.engine import SimulationEngine
 from ev_battery_monitor.simulation.state import SimulationState, SimulationStatus
 
 LOGGER = logging.getLogger(__name__)
+WELCOME_BANNER = r"""
+ _____ __     __  ____        _   _
+| ____|\ \   / / | __ )  __ _| |_| |_ ___ _ __ _   _
+|  _|   \ \ / /  |  _ \ / _` | __| __/ _ \ '__| | | |
+| |___   \ V /   | |_) | (_| | |_| ||  __/ |  | |_| |
+|_____|   \_/    |____/ \__,_|\__|\__\___|_|   \__, |
+                                               |___/
+              M o n i t o r i n g   S e r v i c e
+"""
+WELCOME_TEXT = f"""{WELCOME_BANNER}
+Welcome to EV Battery Monitoring Service
+
+  start   Start the charging simulation
+  stop    Stop the running simulation
+  help    Show all available commands
+"""
 HELP_TEXT = """EV Battery Monitoring Service – Available Commands
 
   help              Show this help
@@ -39,8 +55,7 @@ class CLI:
 
     def run(self) -> None:
         """Run the interactive command loop."""
-        print("Welcome to EV Battery Monitoring Service")
-        print("Type 'help' for available commands.\n")
+        print(WELCOME_TEXT)
         while True:
             command = input("> ").strip()
             if not self.handle_command(command):
