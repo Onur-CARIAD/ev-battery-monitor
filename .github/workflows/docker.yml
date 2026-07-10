@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,31 +16,31 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - run: docker build -t ev-battery-monitor:latest .
       - run: printf 'help\nexit\n' | docker run -i ev-battery-monitor:latest
-      
-      - name: Create artifact directory
-        run: mkdir -p artifacts
-
-      - name: Save image
-        run: docker save ev-battery-monitor:latest -o artifacts/ev-battery-monitor.tar
-
-      - name: Bundle compose file and instructions
-        run: cp packaging/docker-compose.yml packaging/README.md artifacts/
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: artifacts/
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
- 
+
       - name: Push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/ev-battery-monitor:latest
+
+      - name: Bundle image, compose file and instructions
+        run: |
+          mkdir -p bundle
+          docker save ev-battery-monitor:latest -o bundle/ev-battery-monitor.tar
+          cp packaging/docker-compose.yml packaging/README.md bundle/
+          cd bundle
+          zip -r ../ev-battery-monitor.zip .
+
+      - name: Publish bundle as GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: ev-battery-monitor latest
+          files: ev-battery-monitor.zip
