@@ -2,6 +2,32 @@
 
 A Python 3.12 command-line EV battery charging simulation based on the Release 1 technical specification.
 
+## Download
+
+A ready-to-run bundle is published automatically on every push to `main` and is
+available on the **[Releases page](https://github.com/Onur-CARIAD/ev-battery-monitor/releases/latest)**.
+
+The `ev-battery-monitor.zip` asset contains everything needed to run the app
+without building from source:
+
+- `ev-battery-monitor.tar` – the prebuilt Docker image
+- `docker-compose.yml` – Compose configuration (mounts `./logs`)
+- `README.md` – short usage instructions
+
+Download it, then load the image and start the app:
+
+```bash
+docker load -i ev-battery-monitor.tar
+docker compose run --rm ev-battery-monitor
+```
+
+The image is also pushed to Docker Hub and can be pulled directly:
+
+```bash
+docker pull <docker-username>/ev-battery-monitor:latest
+docker run -it <docker-username>/ev-battery-monitor:latest
+```
+
 ## Features
 
 - Interactive CLI: `help`, `show config`, `set`, `reset config`, `start`, `stop`, `metrics`, `exit`
@@ -79,10 +105,12 @@ docker compose run --rm ev-battery-monitor
 The `docker-compose.yml` builds the image on demand, runs the CLI interactively
 and mounts `./logs` into the container so per-run log files stay on the host.
 
-### Run the prebuilt image from GitHub Actions
+### Run the prebuilt image from a Release
 
-The `Docker` workflow builds the image on every push to `main` and uploads a
-ready-to-run bundle as a build artifact named `docker-image`, containing:
+The `Docker` workflow builds the image on every push to `main` and publishes a
+ready-to-run bundle to the
+**[Releases page](https://github.com/Onur-CARIAD/ev-battery-monitor/releases/latest)**
+as `ev-battery-monitor.zip`, containing:
 
 - `ev-battery-monitor.tar` – the Docker image
 - `docker-compose.yml` – Compose configuration (mounts `./logs`)
@@ -90,8 +118,7 @@ ready-to-run bundle as a build artifact named `docker-image`, containing:
 
 Steps:
 
-1. Open the workflow run on GitHub → **Actions** → select the run → download the
-   `docker-image` artifact and unzip it.
+1. Open the **Releases** page, download `ev-battery-monitor.zip` and unzip it.
 2. Load the image and start the app (per-run logs are written to `./logs`):
 
    ```bash
