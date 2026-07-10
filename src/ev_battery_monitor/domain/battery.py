@@ -21,6 +21,10 @@ class Battery:
         """Increase battery temperature."""
         self.temperature_celsius += delta_celsius
 
+    def cool(self, delta_celsius: float) -> None:
+        """Decrease battery temperature by the active cooling amount."""
+        self.temperature_celsius -= delta_celsius
+
     def estimated_range_km(self) -> float:
         """Return estimated available driving range."""
         usable_kwh = self.capacity_kwh * (self.soc_percent / 100.0)
