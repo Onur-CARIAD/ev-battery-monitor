@@ -26,6 +26,15 @@ def test_cooling_activates_above_threshold(engine):
     assert engine.cooling is True
 
 
+def test_status_stays_charging_while_cooling(engine):
+    engine.config._current["runtime.speed_factor"] = 1.0
+    engine.battery.temperature_celsius = 41.0
+    state = engine.tick()
+    assert engine.cooling is True
+    assert state.cooling is True
+    assert state.status == SimulationStatus.CHARGING
+
+
 def test_cooling_deactivates_with_hysteresis(engine):
     engine.cooling = True
     engine.battery.temperature_celsius = 36.0
