@@ -1,0 +1,7 @@
+services:
+  ev-battery-monitor:
+    image: ev-battery-monitor:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./logs:/app/logs
