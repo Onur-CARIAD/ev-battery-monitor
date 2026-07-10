@@ -152,4 +152,4 @@ docker run -it -v ${PWD}/logs:/app/logs ev-battery-monitor:latest
 
 ## Project structure
 
-See `docs/technical-spec.md` for the full implementation contract.
+See `docs/technical-spec.md` and `docs/blueprint.md` for the full implementation contract.
