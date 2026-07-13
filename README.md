@@ -1,6 +1,10 @@
 # EV Battery Monitor
 
-A Python 3.12 command-line EV battery charging simulation based on the Release 1 technical specification.
+EV Battery Monitor is a Python command-line application that simulates the charging process of an electric vehicle battery. The application models battery state of charge (SoC), battery temperature, charging power, cooling behavior, remaining charging time, and estimated driving range in real time. 
+The project provides an interactive CLI that allows users to configure simulation parameters, start and stop charging sessions, inspect metrics, and analyze charging behavior without requiring any external services. The application can be executed locally or inside a Docker container.
+
+## Authors
+T9-J | Squad 32 | Mönsheim
 
 ## Download
 
