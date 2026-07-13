@@ -1,6 +1,7 @@
 """Interactive command-line interface."""
 
 import logging
+import os
 import signal
 import sys
 import threading
@@ -101,6 +102,7 @@ class CLI:
     def start_simulation(self) -> None:
         """Start and run the charging simulation."""
         session_logger = SessionLogger(self.config)
+        console = _SimulationConsole(self.stop_event)
         try:
             self.config.validate_for_start()
             engine = SimulationEngine.from_config(self.config)
@@ -110,6 +112,7 @@ class CLI:
             session_logger.start()
             print("Simulation started. Type 'stop' to abort.")
             self._install_sigint_handler()
+            console.start()
             start = monotonic()
             last_output_soc = -1.0
             while not self.stop_event.is_set():
@@ -121,20 +124,22 @@ class CLI:
                 if state.soc_percent - last_output_soc >= self.config.get(
                     "runtime.output_soc_step_percent"
                 ) or state.status in {SimulationStatus.COMPLETED, SimulationStatus.ERROR}:
-                    print(self.render_tick(state))
+                    console.print_line(self.render_tick(state))
                     last_output_soc = state.soc_percent
                 if state.status == SimulationStatus.COMPLETED:
-                    print("Simulation completed successfully.")
+                    console.print_line("Simulation completed successfully.")
                     break
                 sleep(self.config.get("runtime.tick_seconds"))
             else:
-                print("Simulation stopped by user.")
+                console.print_line("Simulation stopped by user.")
             self.metrics.last_duration_seconds = int(monotonic() - start)
         except ConfigError as exc:
             print(str(exc))
         except SimulationError as exc:
-            print(self.render_error(engine.last_state, str(exc)))
+            console.print_line(self.render_error(engine.last_state, str(exc)))
         finally:
+            self.stop_event.set()
+            console.close()
             self.metrics.set_running(False)
             self._running_simulation = False
             session_logger.log_metrics(self.metrics)
@@ -188,12 +193,128 @@ class CLI:
         signal.signal(signal.SIGINT, handler)
 
 
-def locked_input(stop_event: threading.Event) -> None:
-    """Read stdin while simulation is running and stop on the stop command."""
-    while not stop_event.is_set():
-        line = sys.stdin.readline().strip()
+def _enable_ansi() -> None:
+    """Enable ANSI escape sequence processing on Windows consoles."""
+    if os.name != "nt":
+        return
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.GetStdHandle(-11)
+    mode = ctypes.c_uint32()
+    if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+        kernel32.SetConsoleMode(handle, mode.value | 0x0004)
+
+
+class _SimulationConsole:
+    """Keep user input on its own line while tick output streams above it.
+
+    Reads stdin character by character with software echo so that typing a
+    command such as ``stop`` during the simulation is never split across the
+    streaming tick output. Only ``stop`` aborts the run; any other input is
+    reported as locked (Spec 6 threading model / BP 6).
+    """
+
+    PROMPT = "> "
+
+    def __init__(self, stop_event: threading.Event) -> None:
+        """Initialize the console with the shared stop event."""
+        self._stop_event = stop_event
+        self._buffer = ""
+        self._lock = threading.Lock()
+        self._thread: threading.Thread | None = None
+        self._started = False
+
+    def start(self) -> None:
+        """Show the input prompt and start reading stdin in a daemon thread."""
+        _enable_ansi()
+        self._started = True
+        with self._lock:
+            self._render_input()
+        self._thread = threading.Thread(target=self._read_loop, daemon=True)
+        self._thread.start()
+
+    def close(self) -> None:
+        """Stop reading input and clear the prompt line."""
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._thread = None
+        if self._started:
+            with self._lock:
+                sys.stdout.write("\r\x1b[2K")
+                sys.stdout.flush()
+            self._started = False
+
+    def print_line(self, text: str) -> None:
+        """Print a full line above the current input line."""
+        with self._lock:
+            sys.stdout.write("\r\x1b[2K" + text + "\n")
+            self._render_input()
+
+    def _render_input(self) -> None:
+        sys.stdout.write("\r\x1b[2K" + self.PROMPT + self._buffer)
+        sys.stdout.flush()
+
+    def _submit(self) -> None:
+        with self._lock:
+            line = self._buffer.strip()
+            self._buffer = ""
+            sys.stdout.write("\r\x1b[2K" + self.PROMPT + line + "\n")
+            self._render_input()
         if line == "stop":
-            stop_event.set()
-            return
-        if line:
-            print("Commands are locked while simulation is running. Type 'stop' to abort.")
+            self._stop_event.set()
+        elif line:
+            self.print_line(
+                "Commands are locked while simulation is running. Type 'stop' to abort."
+            )
+
+    def _handle_char(self, char: str) -> None:
+        if char in ("\r", "\n"):
+            self._submit()
+        elif char in ("\b", "\x7f"):
+            with self._lock:
+                self._buffer = self._buffer[:-1]
+                self._render_input()
+        elif char == "\x03":
+            self._stop_event.set()
+        elif char.isprintable():
+            with self._lock:
+                self._buffer += char
+                self._render_input()
+
+    def _read_loop(self) -> None:
+        if os.name == "nt":
+            self._read_loop_windows()
+        else:
+            self._read_loop_posix()
+
+    def _read_loop_windows(self) -> None:
+        import msvcrt
+
+        while not self._stop_event.is_set():
+            if msvcrt.kbhit():
+                char = msvcrt.getwch()
+                if char in ("\x00", "\xe0"):
+                    if msvcrt.kbhit():
+                        msvcrt.getwch()
+                    continue
+                self._handle_char(char)
+            else:
+                sleep(0.02)
+
+    def _read_loop_posix(self) -> None:
+        import select
+        import termios
+        import tty
+
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            while not self._stop_event.is_set():
+                ready, _, _ = select.select([sys.stdin], [], [], 0.05)
+                if ready:
+                    self._handle_char(sys.stdin.read(1))
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
